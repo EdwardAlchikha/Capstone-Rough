@@ -18,7 +18,7 @@ def drive(speed):
 		
 def sigintHandler(sig, frame):
 	print('Stopping background threads.')
-	navThread.stop();
+	navThread.stop()
 	navThread.join()
 	ledPwm.stop()
 	forwardPwm.stop()
@@ -34,7 +34,7 @@ class StoppableThread(threading.Thread):
 		self.stopEvent = threading.Event()
 		
 	def stop(self):
-		self.stopEvent.set();
+		self.stopEvent.set()
 		
 	def stopped(self):
 		return self.stopEvent.is_set()
