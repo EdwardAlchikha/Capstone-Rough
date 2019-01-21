@@ -25,13 +25,12 @@ def sigintHandler(sig, frame):
 	backwardPwm.stop()
 	GPIO.output(motorEnablePin, GPIO.LOW)
 	# GPIO.cleanup()
-	print('Ctrl+C pressed. Program will close in 2 seconds.')
-	time.sleep(2);
+	print('Ctrl+C pressed. Closing program.')
 	sys.exit(0)
 	
-class NavigationThread(threading.Thread):
+class StoppableThread(threading.Thread):
 	def __init__(self):
-		super(NavigationThread, self).__init__()
+		super(StoppableThread, self).__init__()
 		self.stopEvent = threading.Event()
 		
 	def stop(self):
@@ -39,11 +38,15 @@ class NavigationThread(threading.Thread):
 		
 	def stopped(self):
 		return self.stopEvent.is_set()
+
+class NavigationThread(StoppableThread):
+	def __init__(self):
+		super(NavigationThread, self).__init__()
 		
 	def run(self):
 		while(not self.stopped()):
 			ledPwm.ChangeDutyCycle(70)
-			drive(0.275)
+			drive(0.35)
 			print('navThread: ' + str(time.time()))
 			time.sleep(1)
 			ledPwm.ChangeDutyCycle(0)
