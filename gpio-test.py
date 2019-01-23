@@ -19,15 +19,20 @@ def drive(speed):
 
 
 def sigint_handler(sig, frame):
-    print('Stopping background threads.')
+    print('\nCtrl+C pressed.\nStopping background threads.')
     navThread.stop()
-    navThread.join()
+    camThread.stop()
+
     ledPwm.stop()
     forwardPwm.stop()
     backwardPwm.stop()
+
+    navThread.join()
+    camThread.join()
+
     GPIO.output(motorEnablePin, GPIO.LOW)
     # GPIO.cleanup()
-    print('Ctrl+C pressed. Closing program.')
+    print('Closing program.')
     sys.exit(0)
 
 
@@ -51,8 +56,8 @@ class CameraThread(StoppableThread):
         camera = PiCamera()
         camera.exposure_mode = 'antishake'
         camera.start_recording('/home/pi/test.h264')
-        while not stopped():
-            sleep(1)
+        while not self.stopped():
+            time.sleep(1)
 
         camera.stop_recording()
 
