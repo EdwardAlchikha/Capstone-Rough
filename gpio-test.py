@@ -1,4 +1,5 @@
 import RPi.GPIO as GPIO
+from picamera import PiCamera
 import time
 import signal
 import sys
@@ -42,17 +43,31 @@ class StoppableThread(threading.Thread):
         return self.stopEvent.is_set()
 
 
+class CameraThread(StoppableThread):
+    def __init__(self):
+        super(CameraThread, self).__init__()
+
+    def run(self):
+        camera = PiCamera()
+        camera.exposure_mode = 'antishake'
+        camera.start_recording('/home/pi/test.h264')
+        while not stopped():
+            sleep(1)
+
+        camera.stop_recording()
+
+
 class NavigationThread(StoppableThread):
     def __init__(self):
         super(NavigationThread, self).__init__()
 
     def run(self):
         while not self.stopped():
-            ledPwm.ChangeDutyCycle(70)
+            ledPwm.ChangeDutyCycle(50)
             drive(0.35)
             print('navThread: ' + str(time.time()))
             time.sleep(1)
-            ledPwm.ChangeDutyCycle(0)
+            ledPwm.ChangeDutyCycle(100)
             drive(-1)
             print('navThread: ' + str(time.time()))
             time.sleep(1)
@@ -66,7 +81,7 @@ if __name__ == '__main__':
     motorBackwardPin = 7
     motorEnablePin = 11
 
-    pwmFrequency = 100  # Hz
+    pwmFrequency = 50  # Hz
 
     GPIO.setup(ledEnablePin, GPIO.OUT)
     GPIO.setup(motorForwardPin, GPIO.OUT)
@@ -89,6 +104,8 @@ if __name__ == '__main__':
 
     navThread = NavigationThread()
     navThread.start()
+    camThread = CameraThread()
+    camThread.start()
 
     while True:
         testCounter += 1
