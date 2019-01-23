@@ -23,7 +23,6 @@ def sigint_handler(sig, frame):
     navThread.stop()
     camThread.stop()
 
-    ledPwm.stop()
     forwardPwm.stop()
     backwardPwm.stop()
 
@@ -68,12 +67,10 @@ class NavigationThread(StoppableThread):
 
     def run(self):
         while not self.stopped():
-            ledPwm.ChangeDutyCycle(50)
-            drive(0.35)
+            drive(0.85)
             print('navThread: ' + str(time.time()))
             time.sleep(1)
-            ledPwm.ChangeDutyCycle(100)
-            drive(-1)
+            drive(-0.25)
             print('navThread: ' + str(time.time()))
             time.sleep(1)
 
@@ -81,26 +78,22 @@ class NavigationThread(StoppableThread):
 if __name__ == '__main__':
     GPIO.setmode(GPIO.BOARD)  # see https://pinout.xyz/, using in-order scheme
 
-    ledEnablePin = 3
     motorForwardPin = 5
     motorBackwardPin = 7
     motorEnablePin = 11
 
     pwmFrequency = 50  # Hz
 
-    GPIO.setup(ledEnablePin, GPIO.OUT)
     GPIO.setup(motorForwardPin, GPIO.OUT)
     GPIO.setup(motorBackwardPin, GPIO.OUT)
     GPIO.setup(motorEnablePin, GPIO.OUT)
 
-    ledPwm = GPIO.PWM(ledEnablePin, pwmFrequency)
     forwardPwm = GPIO.PWM(motorForwardPin, pwmFrequency)
     backwardPwm = GPIO.PWM(motorBackwardPin, pwmFrequency)
 
     signal.signal(signal.SIGINT, sigint_handler)
 
     GPIO.output(motorEnablePin, GPIO.HIGH)
-    ledPwm.start(0)
     forwardPwm.start(0)
     backwardPwm.start(0)
 
