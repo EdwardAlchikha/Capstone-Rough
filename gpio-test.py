@@ -7,15 +7,29 @@ import threading
 
 
 def drive(speed):
-    if speed < 0:
-        forwardPwm.ChangeDutyCycle(0)
-        backwardPwm.ChangeDutyCycle(min(-speed * 100, 100))
-    elif speed > 0:
-        forwardPwm.ChangeDutyCycle(min(speed * 100, 100))
-        backwardPwm.ChangeDutyCycle(0)
+    if abs(speed) < 0.3:
+        forwardPwm.ChangeFrequency(pwmFrequencySlow)
+        backwardPwm.ChangeFrequency(pwmFrequencySlow)
     else:
-        forwardPwm.ChangeDutyCycle(0)
-        backwardPwm.ChangeDutyCycle(0)
+        forwardPwm.ChangeFrequency(pwmFrequency)
+        backwardPwm.ChangeFrequency(pwmFrequency)
+
+    speed_adj = speed * 100
+    forwardPwm.ChangeDutyCycle(max(min(speed_adj, 100), 0))
+    backwardPwm.ChangeDutyCycle(max(min(-speed_adj, 100), 0))
+
+
+def turn(angle):
+    right = GPIO.LOW
+    left = GPIO.LOW
+
+    if angle > 0:
+        right = GPIO.HIGH
+    elif angle < 0:
+        left = GPIO.HIGH
+
+    GPIO.output(turnRightPin, right)
+    GPIO.output(turnLeftPin, left)
 
 
 def sigint_handler(sig, frame):
@@ -30,6 +44,8 @@ def sigint_handler(sig, frame):
     camThread.join()
 
     GPIO.output(motorEnablePin, GPIO.LOW)
+    turn(0)
+    GPIO.output(turnEnablePin, GPIO.LOW)
     # GPIO.cleanup()
     print('Closing program.')
     sys.exit(0)
@@ -68,10 +84,11 @@ class NavigationThread(StoppableThread):
     def run(self):
         while not self.stopped():
             drive(0.85)
-            print('navThread: ' + str(time.time()))
+            turn(-1)
             time.sleep(1)
-            drive(-0.25)
-            print('navThread: ' + str(time.time()))
+
+            drive(-0.1)
+            turn(1)
             time.sleep(1)
 
 
@@ -81,24 +98,28 @@ if __name__ == '__main__':
     motorForwardPin = 5
     motorBackwardPin = 7
     motorEnablePin = 11
+    turnEnablePin = 12
+    turnLeftPin = 10
+    turnRightPin = 8
 
-    pwmFrequency = 50  # Hz
+    pwmFrequency = 60  # Hz
+    pwmFrequencySlow = 15  # Hz
 
     GPIO.setup(motorForwardPin, GPIO.OUT)
     GPIO.setup(motorBackwardPin, GPIO.OUT)
     GPIO.setup(motorEnablePin, GPIO.OUT)
+    GPIO.setup(turnEnablePin, GPIO.OUT)
+    GPIO.setup(turnLeftPin, GPIO.OUT)
+    GPIO.setup(turnRightPin, GPIO.OUT)
 
     forwardPwm = GPIO.PWM(motorForwardPin, pwmFrequency)
     backwardPwm = GPIO.PWM(motorBackwardPin, pwmFrequency)
-
-    signal.signal(signal.SIGINT, sigint_handler)
-
     GPIO.output(motorEnablePin, GPIO.HIGH)
+    GPIO.output(turnEnablePin, GPIO.HIGH)
     forwardPwm.start(0)
     backwardPwm.start(0)
 
-    testCounter = 0
-    lastTime = time.time()
+    signal.signal(signal.SIGINT, sigint_handler)
 
     navThread = NavigationThread()
     navThread.start()
@@ -106,10 +127,4 @@ if __name__ == '__main__':
     camThread.start()
 
     while True:
-        testCounter += 1
-        time.sleep(0.01)  # threads don't improve CPU performance (only IO)
-        # need to use processes later.
-        currTime = time.time()
-        if currTime - lastTime > 5:
-            print('mainThread: ' + str(currTime) + ', ' + str(testCounter))
-            lastTime = currTime
+        time.sleep(1)
