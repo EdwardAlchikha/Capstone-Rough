@@ -1,9 +1,14 @@
 import RPi.GPIO as GPIO
 from picamera import PiCamera
+from picamera.array import PiRGBArray
+import numpy as np
+import importlib
+import cv2
 import time
 import signal
 import sys
 import threading
+from img_test import *
 
 
 def drive(speed):
@@ -69,12 +74,35 @@ class CameraThread(StoppableThread):
 
     def run(self):
         camera = PiCamera()
-        camera.exposure_mode = 'antishake'
-        camera.start_recording('/home/pi/test.h264')
-        while not self.stopped():
-            time.sleep(1)
+        camera.resolution = (640, 480)
+        camera.framerate = 20
+        raw_capture = PiRGBArray(camera, size=(640, 480))
 
-        camera.stop_recording()
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        video_writer = cv2.VideoWriter('/home/pi/output.avi', fourcc, 10.0, (640, 480))
+
+        time.sleep(0.2)  # give camera time to warm up?
+
+        frame_counter = 0
+        start_time = time.time()
+
+        for frame in camera.capture_continuous(raw_capture, format="bgr", use_video_port=True):
+            if self.stopped():
+                break
+
+            frame_counter += 1
+            image = frame.array
+            c = grey_and_blur(image)
+
+            video_writer.write(cv2.cvtColor(c, cv2.COLOR_GRAY2BGR))
+            raw_capture.truncate(0)
+
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        print('releasing! ' + str(elapsed_time) + ' , ' + str(frame_counter))
+        video_writer.release()
+        cv2.destroyAllWindows()
 
 
 class NavigationThread(StoppableThread):
